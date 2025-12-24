@@ -4,6 +4,8 @@ import time
 import threading
 import subprocess
 import tkinter as tk
+import random
+import importlib.util
 from tkinter import ttk, messagebox, filedialog, simpledialog
 
 import requests
@@ -26,6 +28,25 @@ PROXYSCRAPE_URL = (
 
 PROFILES_ROOT_NAME = "Brave Profile"
 DEFAULT_PROFILE_NAME = "Default"
+PROFILING_DEFAULT_MINUTES = 15
+PROFILING_PROFILE_DIRNAME = "Browser Profiling"
+
+BROWSER_PROFILING_URLS = [
+    "https://openai.com/",
+    "https://www.anthropic.com/",
+    "https://ai.google/",
+    "https://huggingface.co/",
+    "https://pandas.pydata.org/",
+    "https://numpy.org/",
+    "https://scikit-learn.org/",
+    "https://cloud.google.com/",
+    "https://aws.amazon.com/",
+    "https://azure.microsoft.com/",
+    "https://playwright.dev/",
+    "https://www.selenium.dev/",
+    "https://docs.python.org/3/library/asyncio.html",
+    "https://developer.mozilla.org/",
+]
 
 
 # ===================== Basic utils =====================
@@ -370,6 +391,10 @@ class App(tk.Tk):
         self.auto_is_running = False
         self.auto_results = []
 
+        self.profiling_duration_var = tk.IntVar(value=self.cfg.get("profiling_duration_min", PROFILING_DEFAULT_MINUTES))
+        self.profiling_status_var = tk.StringVar(value="Ready.")
+        self.profiling_is_running = False
+
         self.all_profile_names: list[str] = []
         self.profile_search_typed = ""
         self.profile_search_last_ts = 0.0
@@ -517,6 +542,8 @@ class App(tk.Tk):
         if cfg.get("auto_proxy_source"):
             self.auto_proxy_source_var.set(cfg.get("auto_proxy_source", "provider"))
 
+        self.profiling_duration_var.set(int(cfg.get("profiling_duration_min", PROFILING_DEFAULT_MINUTES)))
+
         self.unified_apply_detect_state("-", "-", "-")
         self.manual_win_tz_pick_var.set("(no selected)")
 
@@ -534,6 +561,7 @@ class App(tk.Tk):
             "proxy_pass": self.proxy_pass_var.get().strip(),
             "auto_proxy_list": self.auto_list_text.get("1.0", "end").strip() if hasattr(self, "auto_list_text") else "",
             "auto_proxy_source": self.auto_proxy_source_var.get().strip(),
+            "profiling_duration_min": int(self.profiling_duration_var.get()),
         }
         save_config(prof_dir, cfg)
 
@@ -574,11 +602,14 @@ class App(tk.Tk):
 
         manual_tab = ScrollableFrame(nb)
         auto_tab = ScrollableFrame(nb)
+        profiling_tab = ScrollableFrame(nb)
         nb.add(manual_tab, text="Manual Settings")
         nb.add(auto_tab, text="Semi Auto Settings")
+        nb.add(profiling_tab, text="Browser Profiling")
 
         self._build_manual_tab(manual_tab.content)
         self._build_auto_tab(auto_tab.content)
+        self._build_profiling_tab(profiling_tab.content)
 
         bottom = ttk.Frame(outer)
         bottom.pack(fill="x")
@@ -767,6 +798,36 @@ class App(tk.Tk):
         self.auto_log.grid(row=0, column=0, sticky="ew", padx=(10, 0), pady=10)
         log_scroll.grid(row=0, column=1, sticky="ns", padx=(0, 10), pady=10)
         self.auto_log.configure(state="disabled")
+
+    def _build_profiling_tab(self, parent):
+        parent.columnconfigure(0, weight=1)
+
+        info = ttk.LabelFrame(parent, text="Browser Profiling")
+        info.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 6))
+        info.columnconfigure(1, weight=1)
+
+        ttk.Label(info, text="Duration (minutes):").grid(row=0, column=0, sticky="w", padx=10, pady=(10, 6))
+        ttk.Spinbox(info, from_=1, to=240, textvariable=self.profiling_duration_var, width=6).grid(
+            row=0, column=1, sticky="w", padx=(0, 10), pady=(10, 6)
+        )
+
+        ttk.Label(
+            info,
+            text=(
+                "Profiles are created by visiting reputable sites across AI, data analysis, cloud compute, "
+                "and web automation topics using Playwright Chromium."
+            )
+        ).grid(row=1, column=0, columnspan=2, sticky="w", padx=10, pady=(0, 10))
+
+        controls = ttk.Frame(info)
+        controls.grid(row=2, column=0, columnspan=2, sticky="w", padx=10, pady=(0, 10))
+        self.profiling_start_btn = ttk.Button(
+            controls,
+            text="Start Browser Profiling",
+            command=self.start_browser_profiling
+        )
+        self.profiling_start_btn.pack(side="left")
+        ttk.Label(controls, textvariable=self.profiling_status_var).pack(side="left", padx=12)
 
     # ===== Auto: fetch provider =====
     def fetch_proxyscrape_into_text(self):
@@ -1038,12 +1099,12 @@ class App(tk.Tk):
 
             ui_prog(100, "Done")
             ui_log("Done.")
-            self.auto_is_running = False
-            self.after(0, lambda: messagebox.showinfo(
-                "Done",
-                "Testing Done.\n- Table will show Alive Proxy"
-            ))
-            self.after(0, self.save_current_profile_config)
+        self.auto_is_running = False
+        self.after(0, lambda: messagebox.showinfo(
+            "Done",
+            "Testing Done.\n- Table will show Alive Proxy"
+        ))
+        self.after(0, self.save_current_profile_config)
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -1196,6 +1257,93 @@ class App(tk.Tk):
             messagebox.showinfo("Success", "Timezone has changed, Please Refresh whoer status")
         else:
             messagebox.showerror("Failed", msg)
+
+    def start_browser_profiling(self):
+        if self.profiling_is_running:
+            messagebox.showwarning("Running", "Browser profiling is already running.")
+            return
+
+        try:
+            duration_min = int(self.profiling_duration_var.get())
+        except (TypeError, ValueError):
+            messagebox.showerror("Invalid duration", "Please enter a whole number of minutes.")
+            return
+        if duration_min <= 0:
+            messagebox.showerror("Invalid duration", "Please enter a duration greater than 0 minutes.")
+            return
+
+        if importlib.util.find_spec("playwright") is None:
+            messagebox.showerror(
+                "Missing dependency",
+                "Playwright is not installed.\n\nRun:\n  pip install playwright\n  playwright install chromium"
+            )
+            return
+
+        self.save_current_profile_config()
+        self.profiling_is_running = True
+        self.profiling_status_var.set("Running...")
+        self.profiling_start_btn.configure(state="disabled")
+
+        def ui_status(msg: str):
+            self.after(0, lambda: self.profiling_status_var.set(msg))
+
+        def finish(ok: bool, err: str = ""):
+            self.profiling_is_running = False
+            self.after(0, lambda: self.profiling_start_btn.configure(state="normal"))
+            if ok:
+                ui_status("Completed.")
+                self.after(0, lambda: messagebox.showinfo("Done", "Browser profiling completed."))
+            else:
+                ui_status("Failed.")
+                self.after(0, lambda: messagebox.showerror("Failed", f"Browser profiling failed.\n{err}"))
+
+        def worker():
+            try:
+                self._run_browser_profiling(duration_min, ui_status)
+                finish(True)
+            except Exception as exc:
+                finish(False, str(exc))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _run_browser_profiling(self, duration_min: int, ui_status) -> None:
+        from playwright.sync_api import sync_playwright
+
+        profile_dir = self.profile_dir_var.get().strip()
+        ensure_dir(profile_dir)
+        user_data_dir = os.path.join(profile_dir, PROFILING_PROFILE_DIRNAME)
+        ensure_dir(user_data_dir)
+
+        end_time = time.time() + (duration_min * 60)
+        url_index = 0
+
+        with sync_playwright() as p:
+            context = p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                headless=False,
+                viewport={"width": 1280, "height": 720}
+            )
+            page = context.new_page()
+
+            try:
+                while time.time() < end_time:
+                    url = BROWSER_PROFILING_URLS[url_index % len(BROWSER_PROFILING_URLS)]
+                    url_index += 1
+                    ui_status(f"Visiting {url}")
+                    try:
+                        page.goto(url, wait_until="load", timeout=60000)
+                    except Exception:
+                        continue
+
+                    page.wait_for_timeout(int(random.uniform(2, 5) * 1000))
+
+                    for _ in range(random.randint(3, 7)):
+                        page.mouse.wheel(0, random.randint(400, 1200))
+                        page.wait_for_timeout(random.randint(400, 1200))
+
+                    page.wait_for_timeout(int(random.uniform(2, 8) * 1000))
+            finally:
+                context.close()
 
 
 if __name__ == "__main__":
