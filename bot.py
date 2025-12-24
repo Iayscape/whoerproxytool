@@ -14,7 +14,7 @@ try:
 except Exception:
     ZoneInfo = None
 
-APP_NAME = "Proxy Browser Launcher + Whoer 100%"
+APP_NAME = "Peluncur Brave + Proxy Checker (Whoer)"
 WHOER_URL = "https://whoer.net/"
 IPINFO_URL = "https://ipinfo.io/json"
 
@@ -97,10 +97,10 @@ def get_current_tz() -> str:
 def set_windows_timezone(tz_id: str) -> tuple[bool, str]:
     try:
         subprocess.run(["tzutil", "/s", tz_id], check=True, capture_output=True, text=True)
-        return True, "Timezone changed."
+        return True, "Zona waktu berhasil diubah."
     except subprocess.CalledProcessError as e:
         msg = (e.stderr or e.stdout or str(e)).strip()
-        return False, f"Fail change Timezone. Please Run as Administrator.\n{msg}"
+        return False, f"Gagal mengubah zona waktu. Jalankan sebagai Administrator.\n{msg}"
 
 
 def build_requests_proxies(host: str, port: str, username: str = "", password: str = "") -> dict:
@@ -232,16 +232,16 @@ def iana_offset_minutes_now(iana_tz: str) -> int | None:
 
 def iana_to_windows_best(iana_tz: str) -> str:
     if not iana_tz or iana_tz in ("-", ""):
-        return "(no map)"
+        return "(tidak tersedia)"
 
     items = get_tzutil_items_cached()
     off = iana_offset_minutes_now(iana_tz)
     if off is None:
-        return "(no map)"
+        return "(tidak tersedia)"
 
     cands = [it for it in items if it["offset_min"] == off]
     if not cands:
-        return "(no map)"
+        return "(tidak tersedia)"
 
     keyword = ""
     if "/" in iana_tz:
@@ -355,7 +355,7 @@ class App(tk.Tk):
         self.detect_iana_tz_var = tk.StringVar(value="-")
         self.tz_windows_reco_var = tk.StringVar(value="-")
         self.tz_current_var = tk.StringVar(value=get_current_tz() or "-")
-        self.mismatch_var = tk.StringVar(value="(Belum dicek)")
+        self.mismatch_var = tk.StringVar(value="(Belum diperiksa)")
 
         # Manual UTC/GMT picker state
         self.utc_offset_var = tk.StringVar(value="UTC+00:00")
@@ -380,7 +380,7 @@ class App(tk.Tk):
 
     def browse_brave(self):
         path = filedialog.askopenfilename(
-            title="Select brave.exe",
+            title="Pilih brave.exe",
             filetypes=[("Brave executable", "brave.exe"), ("All files", "*.*")]
         )
         if path:
@@ -449,17 +449,17 @@ class App(tk.Tk):
             pass
 
     def create_new_profile(self):
-        name = simpledialog.askstring("Create Profile", "New Profile Name:", parent=self)
+        name = simpledialog.askstring("Buat Profil", "Nama Profil Baru:", parent=self)
         if name is None:
             return
         name = sanitize_profile_name(name)
         if not name:
-            messagebox.showerror("Error", "Name Profile Empty / Invalid.")
+            messagebox.showerror("Kesalahan", "Nama profil kosong atau tidak valid.")
             return
 
         new_dir = os.path.join(profiles_root_dir(), name)
         if os.path.exists(new_dir) and os.listdir(new_dir):
-            ok = messagebox.askyesno("Duplicate", f"Folder profile '{name}' already.\nUse that profile?")
+            ok = messagebox.askyesno("Profil Sudah Ada", f"Folder profil '{name}' sudah ada.\nGunakan profil ini?")
             if not ok:
                 return
         ensure_dir(new_dir)
@@ -480,7 +480,7 @@ class App(tk.Tk):
         self.refresh_profile_list()
         self.profile_selected_name_var.set(name)
         self.load_profile_by_name(name)
-        messagebox.showinfo("OK", f"Profile '{name}' created:\n{new_dir}")
+        messagebox.showinfo("Berhasil", f"Profil '{name}' dibuat:\n{new_dir}")
 
     def load_profile_by_name(self, name: str):
         name = (name or "").strip()
@@ -489,7 +489,7 @@ class App(tk.Tk):
 
         p = os.path.join(profiles_root_dir(), name)
         if not os.path.isdir(p):
-            messagebox.showwarning("Not Found", f"Profile '{name}' not found.")
+            messagebox.showwarning("Tidak Ditemukan", f"Profil '{name}' tidak ditemukan.")
             return
 
         self.active_profile_dir = p
@@ -518,7 +518,7 @@ class App(tk.Tk):
             self.auto_proxy_source_var.set(cfg.get("auto_proxy_source", "provider"))
 
         self.unified_apply_detect_state("-", "-", "-")
-        self.manual_win_tz_pick_var.set("(no selected)")
+        self.manual_win_tz_pick_var.set("(belum dipilih)")
 
     # ===== Config save =====
     def save_current_profile_config(self):
@@ -542,30 +542,30 @@ class App(tk.Tk):
         outer = ttk.Frame(self)
         outer.pack(fill="both", expand=True, padx=12, pady=10)
 
-        top = ttk.LabelFrame(outer, text="Brave & Profile Settings")
+        top = ttk.LabelFrame(outer, text="Pengaturan Brave & Profil")
         top.pack(fill="x")
 
         row = ttk.Frame(top)
         row.pack(fill="x", padx=10, pady=(8, 4))
-        ttk.Label(row, text="Brave executable (brave.exe):").pack(anchor="w")
+        ttk.Label(row, text="Lokasi Brave (brave.exe):").pack(anchor="w")
         r2 = ttk.Frame(row)
         r2.pack(fill="x", pady=4)
         r2.columnconfigure(0, weight=1)
         ttk.Entry(r2, textvariable=self.brave_path_var).grid(row=0, column=0, sticky="ew")
-        ttk.Button(r2, text="Browse...", command=self.browse_brave).grid(row=0, column=1, padx=8)
+        ttk.Button(r2, text="Telusuri...", command=self.browse_brave).grid(row=0, column=1, padx=8)
 
         srow = ttk.Frame(top)
         srow.pack(fill="x", padx=10, pady=(2, 8))
         srow.columnconfigure(1, weight=1)
 
-        ttk.Label(srow, text="Select Profile:").grid(row=0, column=0, sticky="w")
+        ttk.Label(srow, text="Pilih Profil:").grid(row=0, column=0, sticky="w")
         self.profile_combo = ttk.Combobox(srow, textvariable=self.profile_selected_name_var, state="readonly")
         self.profile_combo.grid(row=0, column=1, sticky="ew", padx=(8, 8))
         self.profile_combo.bind("<<ComboboxSelected>>", lambda e: self.load_profile_by_name(self.profile_selected_name_var.get()))
         self.profile_combo.bind("<KeyRelease>", self.on_profile_type_filter)
-        ttk.Button(srow, text="Create New Profile...", command=self.create_new_profile).grid(row=0, column=2, sticky="e")
+        ttk.Button(srow, text="Buat Profil Baru...", command=self.create_new_profile).grid(row=0, column=2, sticky="e")
 
-        ttk.Label(srow, text="Folder Path Profile:").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        ttk.Label(srow, text="Lokasi Folder Profil:").grid(row=1, column=0, sticky="w", pady=(6, 0))
         ttk.Entry(srow, textvariable=self.profile_dir_var, state="readonly").grid(row=1, column=1, columnspan=2,
                                                                                  sticky="ew", padx=(8, 0), pady=(6, 0))
 
@@ -574,32 +574,32 @@ class App(tk.Tk):
 
         manual_tab = ScrollableFrame(nb)
         auto_tab = ScrollableFrame(nb)
-        nb.add(manual_tab, text="Manual Settings")
-        nb.add(auto_tab, text="Semi Auto Settings")
+        nb.add(manual_tab, text="Pengaturan Manual")
+        nb.add(auto_tab, text="Pengaturan Semi Otomatis")
 
         self._build_manual_tab(manual_tab.content)
         self._build_auto_tab(auto_tab.content)
 
         bottom = ttk.Frame(outer)
         bottom.pack(fill="x")
-        ttk.Button(bottom, text="Exit", command=self.destroy).pack(side="right")
+        ttk.Button(bottom, text="Keluar", command=self.destroy).pack(side="right")
 
     def _build_manual_tab(self, parent):
         parent.columnconfigure(0, weight=1)
 
-        brave_proxy = ttk.LabelFrame(parent, text="Proxy Browser(host:port)")
+        brave_proxy = ttk.LabelFrame(parent, text="Proxy untuk Browser (host:port)")
         brave_proxy.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 6))
         brave_proxy.columnconfigure(0, weight=1)
 
-        ttk.Label(brave_proxy, text="Fill HOST:PORT").grid(row=0, column=0, sticky="w", padx=10, pady=(8, 0))
+        ttk.Label(brave_proxy, text="Isi HOST:PORT").grid(row=0, column=0, sticky="w", padx=10, pady=(8, 0))
         ttk.Entry(brave_proxy, textvariable=self.proxy_hostport_var).grid(row=1, column=0, sticky="ew", padx=10, pady=8)
 
         launch_row = ttk.Frame(brave_proxy)
         launch_row.grid(row=2, column=0, sticky="w", padx=10, pady=(0, 10))
-        ttk.Button(launch_row, text="Launch Browser (With proxy)", command=self.manual_launch_brave).pack(side="left")
-        ttk.Button(launch_row, text="Launch Browser (Without proxy)", command=self.manual_launch_brave_no_proxy).pack(side="left", padx=10)
+        ttk.Button(launch_row, text="Buka Browser (dengan proxy)", command=self.manual_launch_brave).pack(side="left")
+        ttk.Button(launch_row, text="Buka Browser (tanpa proxy)", command=self.manual_launch_brave_no_proxy).pack(side="left", padx=10)
 
-        detect = ttk.LabelFrame(parent, text="Detect Proxy Country (username:pass optional)")
+        detect = ttk.LabelFrame(parent, text="Deteksi IP Proxy (username:password opsional)")
         detect.grid(row=1, column=0, sticky="ew", padx=12, pady=6)
         detect.columnconfigure(0, weight=1)
 
@@ -622,11 +622,11 @@ class App(tk.Tk):
 
         btns = ttk.Frame(detect)
         btns.grid(row=1, column=0, sticky="w", padx=10, pady=(0, 10))
-        ttk.Button(btns, text="Detect", command=self.detect_manual).pack(side="left")
-        ttk.Button(btns, text="Apply Recomended Timezone (Sometimes Run as Admin Require)", command=self.apply_recommended_timezone).pack(side="left", padx=10)
-        ttk.Button(btns, text="Refresh Timezone", command=self.refresh_timezone).pack(side="left")
+        ttk.Button(btns, text="Deteksi", command=self.detect_manual).pack(side="left")
+        ttk.Button(btns, text="Terapkan Rekomendasi Zona Waktu (memerlukan Admin)", command=self.apply_recommended_timezone).pack(side="left", padx=10)
+        ttk.Button(btns, text="Segarkan Zona Waktu", command=self.refresh_timezone).pack(side="left")
 
-        out = ttk.LabelFrame(parent, text="Results")
+        out = ttk.LabelFrame(parent, text="Hasil")
         out.grid(row=2, column=0, sticky="ew", padx=12, pady=6)
         out.columnconfigure(0, weight=1)
 
@@ -634,29 +634,29 @@ class App(tk.Tk):
         outgrid.grid(row=0, column=0, sticky="ew", padx=10, pady=8)
         outgrid.columnconfigure(1, weight=1)
 
-        ttk.Label(outgrid, text="Detected IP:").grid(row=0, column=0, sticky="w")
+        ttk.Label(outgrid, text="IP Terdeteksi:").grid(row=0, column=0, sticky="w")
         ttk.Label(outgrid, textvariable=self.detect_ip_var).grid(row=0, column=1, sticky="w")
 
-        ttk.Label(outgrid, text="Detected Country:").grid(row=1, column=0, sticky="w")
+        ttk.Label(outgrid, text="Negara Terdeteksi:").grid(row=1, column=0, sticky="w")
         ttk.Label(outgrid, textvariable=self.detect_country_var).grid(row=1, column=1, sticky="w")
 
-        ttk.Label(outgrid, text="Detected Timezone:").grid(row=2, column=0, sticky="w")
+        ttk.Label(outgrid, text="Zona Waktu Terdeteksi:").grid(row=2, column=0, sticky="w")
         ttk.Label(outgrid, textvariable=self.detect_iana_tz_var).grid(row=2, column=1, sticky="w")
 
-        ttk.Label(outgrid, text="Recomended Timezone (Windows):").grid(row=3, column=0, sticky="w")
+        ttk.Label(outgrid, text="Rekomendasi Zona Waktu (Windows):").grid(row=3, column=0, sticky="w")
         ttk.Label(outgrid, textvariable=self.tz_windows_reco_var).grid(row=3, column=1, sticky="w")
 
-        ttk.Label(outgrid, text="Windows Timezone(Now):").grid(row=4, column=0, sticky="w")
+        ttk.Label(outgrid, text="Zona Waktu Windows (Saat Ini):").grid(row=4, column=0, sticky="w")
         ttk.Label(outgrid, textvariable=self.tz_current_var).grid(row=4, column=1, sticky="w")
 
-        ttk.Label(outgrid, text="Match Status:").grid(row=5, column=0, sticky="w")
+        ttk.Label(outgrid, text="Status Kesesuaian:").grid(row=5, column=0, sticky="w")
         ttk.Label(outgrid, textvariable=self.mismatch_var).grid(row=5, column=1, sticky="w")
 
-        mtz = ttk.LabelFrame(parent, text="Manual Timezone (Select UTC/GMT)")
+        mtz = ttk.LabelFrame(parent, text="Zona Waktu Manual (Pilih UTC/GMT)")
         mtz.grid(row=3, column=0, sticky="ew", padx=12, pady=(6, 12))
         mtz.columnconfigure(1, weight=1)
 
-        ttk.Label(mtz, text="Select Offset:").grid(row=0, column=0, sticky="w", padx=10, pady=(10, 6))
+        ttk.Label(mtz, text="Pilih Offset:").grid(row=0, column=0, sticky="w", padx=10, pady=(10, 6))
 
         offsets = [
             "UTC-12:00", "UTC-11:00", "UTC-10:00", "UTC-09:30", "UTC-09:00",
@@ -671,36 +671,36 @@ class App(tk.Tk):
         cb = ttk.Combobox(mtz, textvariable=self.utc_offset_var, values=offsets, state="readonly", width=12)
         cb.grid(row=0, column=1, sticky="w", padx=(0, 10), pady=(10, 6))
 
-        ttk.Button(mtz, text="Search Timezone", command=self.manual_tz_pick_offset).grid(row=0, column=2, sticky="e", padx=10, pady=(10, 6))
+        ttk.Button(mtz, text="Cari Zona Waktu", command=self.manual_tz_pick_offset).grid(row=0, column=2, sticky="e", padx=10, pady=(10, 6))
 
-        ttk.Label(mtz, text="Selected Timezone:").grid(row=1, column=0, sticky="w", padx=10, pady=(0, 6))
+        ttk.Label(mtz, text="Zona Waktu Terpilih:").grid(row=1, column=0, sticky="w", padx=10, pady=(0, 6))
         ttk.Label(mtz, textvariable=self.manual_win_tz_pick_var).grid(row=1, column=1, columnspan=2, sticky="w", padx=(0, 10), pady=(0, 6))
 
         mbtn = ttk.Frame(mtz)
         mbtn.grid(row=2, column=0, columnspan=3, sticky="w", padx=10, pady=(0, 10))
-        ttk.Button(mbtn, text="Apply Timezone (Sometimes Run as Admin Require)", command=self.manual_tz_apply_selected).pack(side="left")
-        ttk.Button(mbtn, text="Refresh Timezone", command=self.refresh_timezone).pack(side="left", padx=10)
+        ttk.Button(mbtn, text="Terapkan Zona Waktu (memerlukan Admin)", command=self.manual_tz_apply_selected).pack(side="left")
+        ttk.Button(mbtn, text="Segarkan Zona Waktu", command=self.refresh_timezone).pack(side="left", padx=10)
 
     def _build_auto_tab(self, parent):
         parent.columnconfigure(0, weight=1)
 
-        top = ttk.LabelFrame(parent, text="Proxy Filter")
+        top = ttk.LabelFrame(parent, text="Penyaring Proxy")
         top.grid(row=0, column=0, sticky="ew", padx=12, pady=(12, 6))
         top.columnconfigure(0, weight=1)
 
         src_row = ttk.Frame(top)
         src_row.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 4))
-        ttk.Label(src_row, text="Proxy Source:").pack(side="left")
+        ttk.Label(src_row, text="Sumber Proxy:").pack(side="left")
 
-        ttk.Radiobutton(src_row, text="Manual Source", value="provider",
+        ttk.Radiobutton(src_row, text="Sumber Manual", value="provider",
                         variable=self.auto_proxy_source_var,
                         command=self.save_current_profile_config).pack(side="left", padx=10)
 
-        ttk.Button(src_row, text="Generate From ProxyScrape", command=self.fetch_proxyscrape_into_text).pack(side="right")
+        ttk.Button(src_row, text="Ambil dari ProxyScrape", command=self.fetch_proxyscrape_into_text).pack(side="right")
 
-        hint = ("Format Use:\n"
+        hint = ("Format yang didukung:\n"
                 "  host:port\n"
-                "or\n"
+                "atau\n"
                 "  host:port:user:pass\n"
                 ""
                 )
@@ -713,10 +713,10 @@ class App(tk.Tk):
 
         ctl = ttk.Frame(top)
         ctl.grid(row=3, column=0, sticky="ew", padx=10, pady=(0, 10))
-        ttk.Label(ctl, text="Timeout (second):").pack(side="left")
+        ttk.Label(ctl, text="Timeout (detik):").pack(side="left")
         ttk.Spinbox(ctl, from_=5, to=60, textvariable=self.auto_timeout_var, width=6).pack(side="left", padx=6)
-        ttk.Checkbutton(ctl, text="Stop When Proxy is Alive", variable=self.auto_stop_first_var).pack(side="left", padx=12)
-        ttk.Button(ctl, text="Load from file .txt", command=self.load_proxy_file).pack(side="right")
+        ttk.Checkbutton(ctl, text="Berhenti saat proxy aktif", variable=self.auto_stop_first_var).pack(side="left", padx=12)
+        ttk.Button(ctl, text="Muat dari file .txt", command=self.load_proxy_file).pack(side="right")
 
         bar = ttk.Frame(parent)
         bar.grid(row=1, column=0, sticky="ew", padx=12, pady=6)
@@ -729,18 +729,27 @@ class App(tk.Tk):
 
         btns = ttk.Frame(bar)
         btns.grid(row=1, column=0, columnspan=2, sticky="w", pady=(8, 0))
-        ttk.Button(btns, text="Check proxies", command=self.auto_test_proxies).pack(side="left")
-        ttk.Button(btns, text="Use selected proxy (fill to manual settings)", command=self.use_selected_proxy).pack(side="left", padx=10)
-        ttk.Button(btns, text="Launch Browser (selected proxy)", command=self.auto_launch_selected).pack(side="left", padx=10)
+        ttk.Button(btns, text="Periksa Proxy", command=self.auto_test_proxies).pack(side="left")
+        ttk.Button(btns, text="Gunakan proxy terpilih (isi ke manual)", command=self.use_selected_proxy).pack(side="left", padx=10)
+        ttk.Button(btns, text="Buka Browser (proxy terpilih)", command=self.auto_launch_selected).pack(side="left", padx=10)
 
-        table_frame = ttk.LabelFrame(parent, text="Results Proxy (ALIVE)")
+        table_frame = ttk.LabelFrame(parent, text="Hasil Proxy (Aktif)")
         table_frame.grid(row=2, column=0, sticky="ew", padx=12, pady=6)
         table_frame.columnconfigure(0, weight=1)
 
         cols = ("proxy", "status", "latency_ms", "ip", "country", "IP_timezone", "WIN_timezone")
         self.tree = ttk.Treeview(table_frame, columns=cols, show="headings", height=10)
+        headings = {
+            "proxy": "Proxy",
+            "status": "Status",
+            "latency_ms": "Latensi (ms)",
+            "ip": "IP",
+            "country": "Negara",
+            "IP_timezone": "Zona Waktu IP",
+            "WIN_timezone": "Zona Waktu Windows",
+        }
         for c in cols:
-            self.tree.heading(c, text=c)
+            self.tree.heading(c, text=headings.get(c, c))
 
         self.tree.column("proxy", width=220)
         self.tree.column("status", width=70)
@@ -756,7 +765,7 @@ class App(tk.Tk):
         self.tree.grid(row=0, column=0, sticky="ew", padx=(10, 0), pady=10)
         yscroll.grid(row=0, column=1, sticky="ns", padx=(0, 10), pady=10)
 
-        log_frame = ttk.LabelFrame(parent, text="Checking Process (realtime)")
+        log_frame = ttk.LabelFrame(parent, text="Log Proses (realtime)")
         log_frame.grid(row=3, column=0, sticky="ew", padx=12, pady=(6, 20))
         log_frame.columnconfigure(0, weight=1)
 
@@ -770,20 +779,20 @@ class App(tk.Tk):
 
     # ===== Auto: fetch provider =====
     def fetch_proxyscrape_into_text(self):
-        self.auto_status_var.set("Fetch...")
+        self.auto_status_var.set("Memuat...")
         self.update_idletasks()
 
         ok, lines, err = fetch_proxyscrape_list(timeout_s=20)
         if not ok:
-            messagebox.showerror("Failed", f"Failed fetch ProxyScrape: {err}")
-            self.auto_status_var.set("Ready.")
+            messagebox.showerror("Gagal", f"Gagal mengambil ProxyScrape: {err}")
+            self.auto_status_var.set("Siap.")
             return
 
         self.auto_list_text.delete("1.0", "end")
         self.auto_list_text.insert("1.0", "\n".join(lines) + ("\n" if lines else ""))
         self.save_current_profile_config()
-        messagebox.showinfo("OK", f"Fetch {len(lines)} proxy from ProxyScrape.\n")
-        self.auto_status_var.set("Ready.")
+        messagebox.showinfo("Berhasil", f"Berhasil mengambil {len(lines)} proxy dari ProxyScrape.\n")
+        self.auto_status_var.set("Siap.")
 
     # ===== Manual tz by offset =====
     def _parse_offset_string_to_minutes(self, s: str) -> int | None:
@@ -811,13 +820,13 @@ class App(tk.Tk):
     def manual_tz_pick_offset(self):
         off_min = self._parse_offset_string_to_minutes(self.utc_offset_var.get())
         if off_min is None:
-            messagebox.showerror("Error", "Format offset invalid.")
+            messagebox.showerror("Kesalahan", "Format offset tidak valid.")
             return
 
         cands = windows_tz_candidates_by_offset(off_min)
         if not cands:
-            self.manual_win_tz_pick_var.set("(no match)")
-            messagebox.showwarning("None", "None Windows with current timezone")
+            self.manual_win_tz_pick_var.set("(tidak ada yang cocok)")
+            messagebox.showwarning("Tidak Ada", "Tidak ada zona waktu Windows yang sesuai.")
             return
 
         pick = None
@@ -833,18 +842,18 @@ class App(tk.Tk):
 
     def manual_tz_apply_selected(self):
         tzid = (self.manual_win_tz_pick_var.get() or "").strip()
-        if not tzid or tzid in ("(Not Selected)", "(no match)"):
-            messagebox.showwarning("Not Selected", "Please Hit Search Timezone First")
+        if not tzid or tzid in ("(belum dipilih)", "(tidak ada yang cocok)"):
+            messagebox.showwarning("Belum Dipilih", "Silakan klik \"Cari Zona Waktu\" terlebih dahulu.")
             return
 
         cur = get_current_tz() or "-"
         if cur == tzid:
             self.refresh_timezone()
             self.check_mismatch()
-            messagebox.showinfo("OK", "Timezone Windows OK")
+            messagebox.showinfo("Berhasil", "Zona waktu Windows sudah sesuai.")
             return
 
-        ok = messagebox.askyesno("Confirm", f"Change Windows Timezone from:\n{cur}\n\nto:\n{tzid}\n\nNext?")
+        ok = messagebox.askyesno("Konfirmasi", f"Ubah zona waktu Windows dari:\n{cur}\n\nke:\n{tzid}\n\nLanjutkan?")
         if not ok:
             return
 
@@ -852,15 +861,15 @@ class App(tk.Tk):
         if ok2:
             self.refresh_timezone()
             self.check_mismatch()
-            messagebox.showinfo("Success", "Timezone changed succesfully")
+            messagebox.showinfo("Berhasil", "Zona waktu berhasil diubah.")
         else:
             messagebox.showerror("Gagal", msg)
 
     # ===== Auto helpers =====
     def load_proxy_file(self):
         path = filedialog.askopenfilename(
-            title="Select file proxy list(.txt)",
-            filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            title="Pilih file daftar proxy (.txt)",
+            filetypes=[("File teks", "*.txt"), ("Semua file", "*.*")]
         )
         if not path:
             return
@@ -886,12 +895,12 @@ class App(tk.Tk):
     def check_mismatch(self):
         cur = (get_current_tz() or "-").strip()
         reco = (self.tz_windows_reco_var.get() or "-").strip()
-        if reco in ("-", "", "(no map)"):
-            self.mismatch_var.set("(No recomended timezone)")
+        if reco in ("-", "", "(tidak tersedia)"):
+            self.mismatch_var.set("(Tidak ada rekomendasi zona waktu)")
         elif cur == reco:
-            self.mismatch_var.set("OK (Timezone Match)")
+            self.mismatch_var.set("OK (Zona waktu sesuai)")
         else:
-            self.mismatch_var.set("Mismatch (Timezone Mismatch)")
+            self.mismatch_var.set("Tidak sesuai (Zona waktu berbeda)")
 
     def _auto_set_remaining_list(self, remaining_lines: list[str]):
         self.auto_list_text.delete("1.0", "end")
@@ -912,7 +921,7 @@ class App(tk.Tk):
             if not current:
                 ok, lines, err = fetch_proxyscrape_list(timeout_s=20)
                 if not ok:
-                    raise RuntimeError(f"Failed fetch ProxyScrape: {err}")
+                    raise RuntimeError(f"Gagal mengambil ProxyScrape: {err}")
                 self.auto_list_text.delete("1.0", "end")
                 self.auto_list_text.insert("1.0", "\n".join(lines) + ("\n" if lines else ""))
                 self.save_current_profile_config()
@@ -924,17 +933,17 @@ class App(tk.Tk):
 
     def auto_test_proxies(self):
         if ZoneInfo is None:
-            messagebox.showerror("ZoneInfo not available", "Please Install tzdata :\n\npip install tzdata")
+            messagebox.showerror("ZoneInfo tidak tersedia", "Silakan install tzdata:\n\npip install tzdata")
             return
 
         if self.auto_is_running:
-            messagebox.showwarning("Running", "Running")
+            messagebox.showwarning("Sedang Berjalan", "Proses pemeriksaan sedang berjalan.")
             return
 
         try:
             original_lines = self._get_lines_for_testing()
         except Exception as e:
-            messagebox.showerror("Failed", str(e))
+            messagebox.showerror("Gagal", str(e))
             return
 
         candidates = []
@@ -944,7 +953,7 @@ class App(tk.Tk):
                 candidates.append((idx, line, p))
 
         if not candidates:
-            messagebox.showwarning("List empty", "Fill list first")
+            messagebox.showwarning("Daftar Kosong", "Isi daftar proxy terlebih dahulu.")
             return
 
         timeout_s = int(self.auto_timeout_var.get())
@@ -976,17 +985,20 @@ class App(tk.Tk):
 
         def worker():
             total = len(candidates)
-            ui_log(f"starting test {total} proxy (timeout={timeout_s}s, stop_first={stop_first}, source={self.auto_proxy_source_var.get()})")
+            ui_log(
+                f"Memulai uji {total} proxy (timeout={timeout_s}s, stop_first={stop_first}, "
+                f"sumber={self.auto_proxy_source_var.get()})"
+            )
 
             tested_line_indexes = set()
 
             for seq, (line_idx, line_text, p) in enumerate(candidates, start=1):
                 host, port, user, pwd = p["host"], p["port"], p["user"], p["pass"]
                 show_proxy = f"{host}:{port}"
-                ui_log(f"[{seq}/{total}] {show_proxy} - checking...")
+                ui_log(f"[{seq}/{total}] {show_proxy} - memeriksa...")
 
                 t0 = time.time()
-                status = "FAIL"
+                status = "Gagal"
                 ip = "-"
                 cc = "-"
                 iana_tz = "-"
@@ -1000,7 +1012,7 @@ class App(tk.Tk):
                 tested_line_indexes.add(line_idx)
 
                 if code == 200:
-                    status = "OK"
+                    status = "Berhasil"
                     ip = info.get("ip", "-")
                     cc = info.get("country", "-")
                     iana_tz = info.get("timezone", "-")
@@ -1020,11 +1032,11 @@ class App(tk.Tk):
                 }
                 self.auto_results.append(rec)
 
-                if status == "OK":
+                if status == "Berhasil":
                     ui_row((proxy_show, status, latency_ms, ip, cc, iana_tz, win_tz))
                     ui_log(f"{show_proxy} - OK(200) - {cc} - {iana_tz} -> {win_tz} - {latency_ms}ms")
                 else:
-                    ui_log(f"{show_proxy} - ERROR({err or 'Unknown'}) - {latency_ms}ms")
+                    ui_log(f"{show_proxy} - GAGAL({err or 'Tidak diketahui'}) - {latency_ms}ms")
 
                 pct = int((seq / total) * 100)
                 ui_prog(pct, f"{pct}%")
@@ -1032,16 +1044,16 @@ class App(tk.Tk):
                 remaining_lines = [ln for i, ln in enumerate(original_lines) if i not in tested_line_indexes]
                 ui_replace_remaining(remaining_lines)
 
-                if stop_first and status == "OK":
-                    ui_log("Found Alive Proxy")
+                if stop_first and status == "Berhasil":
+                    ui_log("Proxy aktif ditemukan.")
                     break
 
-            ui_prog(100, "Done")
-            ui_log("Done.")
+            ui_prog(100, "Selesai")
+            ui_log("Selesai.")
             self.auto_is_running = False
             self.after(0, lambda: messagebox.showinfo(
-                "Done",
-                "Testing Done.\n- Table will show Alive Proxy"
+                "Selesai",
+                "Pemeriksaan selesai.\n- Tabel menampilkan proxy yang aktif."
             ))
             self.after(0, self.save_current_profile_config)
 
@@ -1050,28 +1062,28 @@ class App(tk.Tk):
     def _get_selected_ok_record(self):
         sel = self.tree.selection()
         if not sel:
-            return None, "Select Alive Proxy From Table"
+            return None, "Pilih proxy aktif dari tabel."
         values = self.tree.item(sel[0], "values")
         if not values:
-            return None, "Selection empty."
+            return None, "Pilihan masih kosong."
         proxy_show, status, latency_ms, ip, cc, iana_tz, win_tz = values
-        if status != "OK":
-            return None, "Select Alive Proxy"
+        if status != "Berhasil":
+            return None, "Pilih proxy yang berstatus aktif."
 
         hostport = str(proxy_show).replace(":***", "")
         rec = None
         for r in self.auto_results:
-            if r["proxy_show"].replace(":***", "") == hostport and r["status"] == "OK":
+            if r["proxy_show"].replace(":***", "") == hostport and r["status"] == "Berhasil":
                 rec = r
                 break
         if not rec:
-            return None, "No Data Proxy"
+            return None, "Data proxy tidak ditemukan."
         return rec, ""
 
     def use_selected_proxy(self):
         rec, err = self._get_selected_ok_record()
         if not rec:
-            messagebox.showwarning("Cannot", err)
+            messagebox.showwarning("Tidak Bisa", err)
             return
 
         self.proxy_hostport_var.set(f'{rec["host"]}:{rec["port"]}')
@@ -1082,18 +1094,18 @@ class App(tk.Tk):
 
         self.unified_apply_detect_state(rec["ip"], rec["country"], rec["iana_tz"])
         self.save_current_profile_config()
-        messagebox.showinfo("OK", "Alive Proxy has filled")
+        messagebox.showinfo("Berhasil", "Proxy aktif telah diisikan ke pengaturan manual.")
 
     def auto_launch_selected(self):
         rec, err = self._get_selected_ok_record()
         if not rec:
-            messagebox.showwarning("Cannot", err)
+            messagebox.showwarning("Tidak Bisa", err)
             return
 
         brave_exe = self.brave_path_var.get().strip()
         prof_dir = self.profile_dir_var.get().strip()
         if not brave_exe or not os.path.isfile(brave_exe):
-            messagebox.showerror("Error", "Path brave.exe invalid.")
+            messagebox.showerror("Kesalahan", "Lokasi brave.exe tidak valid.")
             return
 
         ensure_dir(prof_dir)
@@ -1104,10 +1116,10 @@ class App(tk.Tk):
 
         cur = get_current_tz() or "-"
         reco = (self.tz_windows_reco_var.get() or "").strip()
-        if reco not in ("", "-", "(no map)") and cur != reco:
+        if reco not in ("", "-", "(tidak tersedia)") and cur != reco:
             ok = messagebox.askyesno(
-                "Timezone mismatch",
-                f"Now Timezone:\n{cur}\n\nRecomended:\n{reco}\n\nApply timezone?"
+                "Zona Waktu Tidak Sesuai",
+                f"Zona waktu saat ini:\n{cur}\n\nRekomendasi:\n{reco}\n\nTerapkan zona waktu?"
             )
             if ok:
                 ok2, msg = set_windows_timezone(reco)
@@ -1116,7 +1128,7 @@ class App(tk.Tk):
 
         self.save_current_profile_config()
         launch_brave(brave_exe, prof_dir, proxy_hp)
-        messagebox.showinfo("Success", "Browser Opened With Proxy")
+        messagebox.showinfo("Berhasil", "Browser dibuka dengan proxy.")
 
     # ===== Manual actions =====
     def manual_launch_brave(self):
@@ -1125,30 +1137,30 @@ class App(tk.Tk):
         proxy_hp = self.proxy_hostport_var.get().strip() or None
 
         if not brave_exe or not os.path.isfile(brave_exe):
-            messagebox.showerror("Error", "Path brave.exe invalid.")
+            messagebox.showerror("Kesalahan", "Lokasi brave.exe tidak valid.")
             return
 
         ensure_dir(prof_dir)
         self.save_current_profile_config()
         launch_brave(brave_exe, prof_dir, proxy_hp)
-        messagebox.showinfo("OK", "Browser Opened With Proxy")
+        messagebox.showinfo("Berhasil", "Browser dibuka dengan proxy.")
 
     def manual_launch_brave_no_proxy(self):
         brave_exe = self.brave_path_var.get().strip()
         prof_dir = self.profile_dir_var.get().strip()
 
         if not brave_exe or not os.path.isfile(brave_exe):
-            messagebox.showerror("Error", "Path brave.exe invalid.")
+            messagebox.showerror("Kesalahan", "Lokasi brave.exe tidak valid.")
             return
 
         ensure_dir(prof_dir)
         self.save_current_profile_config()
         launch_brave(brave_exe, prof_dir, proxy_hostport=None)
-        messagebox.showinfo("OK", "Browser Opened (Without proxy)")
+        messagebox.showinfo("Berhasil", "Browser dibuka (tanpa proxy).")
 
     def detect_manual(self):
         if ZoneInfo is None:
-            messagebox.showerror("ZoneInfo not available", "Please Install tzdata :\n\npip install tzdata")
+            messagebox.showerror("ZoneInfo tidak tersedia", "Silakan install tzdata:\n\npip install tzdata")
             return
 
         host = self.proxy_host_var.get().strip()
@@ -1157,13 +1169,13 @@ class App(tk.Tk):
         pwd = self.proxy_pass_var.get().strip()
 
         if not host or not port:
-            messagebox.showwarning("Proxy empty", "Fill Host and Port")
+            messagebox.showwarning("Proxy Kosong", "Isi Host dan Port terlebih dahulu.")
             return
 
         proxies = build_requests_proxies(host, port, user, pwd)
         code, info, err = ipinfo_request(proxies=proxies, timeout_s=15)
         if code != 200:
-            messagebox.showerror("Failed", f"Failed: {err}")
+            messagebox.showerror("Gagal", f"Gagal: {err}")
             return
 
         ip = info.get("ip", "-")
@@ -1174,18 +1186,18 @@ class App(tk.Tk):
 
     def apply_recommended_timezone(self):
         reco = (self.tz_windows_reco_var.get() or "").strip()
-        if reco in ("", "-", "(no map)"):
-            messagebox.showwarning("No Any Recomend", "Recomended Timezone not available")
+        if reco in ("", "-", "(tidak tersedia)"):
+            messagebox.showwarning("Tidak Ada Rekomendasi", "Rekomendasi zona waktu tidak tersedia.")
             return
 
         cur = get_current_tz() or "-"
         if cur == reco:
             self.refresh_timezone()
             self.check_mismatch()
-            messagebox.showinfo("OK", "Timezone Windows as Recomend")
+            messagebox.showinfo("Berhasil", "Zona waktu Windows sudah sesuai rekomendasi.")
             return
 
-        ok = messagebox.askyesno("Confirm", f"Change Windows Timezone from:\n{cur}\n\nto:\n{reco}\n\nNext?")
+        ok = messagebox.askyesno("Konfirmasi", f"Ubah zona waktu Windows dari:\n{cur}\n\nke:\n{reco}\n\nLanjutkan?")
         if not ok:
             return
 
@@ -1193,9 +1205,9 @@ class App(tk.Tk):
         if ok2:
             self.refresh_timezone()
             self.check_mismatch()
-            messagebox.showinfo("Success", "Timezone has changed, Please Refresh whoer status")
+            messagebox.showinfo("Berhasil", "Zona waktu telah diubah. Silakan segarkan status di Whoer.")
         else:
-            messagebox.showerror("Failed", msg)
+            messagebox.showerror("Gagal", msg)
 
 
 if __name__ == "__main__":
