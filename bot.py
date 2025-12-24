@@ -3,6 +3,8 @@ import json
 import time
 import threading
 import subprocess
+import random
+import argparse
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 
@@ -17,6 +19,7 @@ except Exception:
 APP_NAME = "Proxy Browser Launcher + Whoer 100%"
 WHOER_URL = "https://whoer.net/"
 IPINFO_URL = "https://ipinfo.io/json"
+PLAYWRIGHT_PROFILE_DIRNAME = "playwright-profile"
 
 # NEW: built-in provider
 PROXYSCRAPE_URL = (
@@ -37,8 +40,65 @@ def profiles_root_dir() -> str:
     return os.path.join(desktop_path(), PROFILES_ROOT_NAME)
 
 
+def playwright_profile_dir() -> str:
+    return os.path.join(profiles_root_dir(), PLAYWRIGHT_PROFILE_DIRNAME)
+
+
 def ensure_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
+
+
+def run_profiling_runner(duration_minutes: int = 15, headless: bool = True) -> None:
+    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+
+    curated_urls = [
+        "https://openai.com/research",
+        "https://huggingface.co/blog",
+        "https://arxiv.org/list/cs.AI/recent",
+        "https://towardsdatascience.com",
+        "https://www.kaggle.com/discussions",
+        "https://cloud.google.com/blog/products/compute",
+        "https://aws.amazon.com/blogs/compute/",
+        "https://learn.microsoft.com/en-us/azure/architecture/",
+        "https://playwright.dev/python/",
+        "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+        "https://github.com/microsoft/playwright",
+        "https://developers.google.com/web",
+    ]
+
+    user_data_dir = playwright_profile_dir()
+    ensure_dir(user_data_dir)
+    end_time = time.monotonic() + (duration_minutes * 60)
+
+    with sync_playwright() as p:
+        context = p.chromium.launch_persistent_context(
+            user_data_dir,
+            headless=headless,
+            viewport={"width": 1280, "height": 800},
+        )
+        try:
+            page = context.new_page()
+            while time.monotonic() < end_time:
+                url = random.choice(curated_urls)
+                try:
+                    page.goto(url, wait_until="load", timeout=45000)
+                except PlaywrightTimeoutError:
+                    continue
+
+                time.sleep(random.uniform(2, 5))
+
+                for _ in range(random.randint(3, 7)):
+                    if time.monotonic() >= end_time:
+                        break
+                    page.mouse.wheel(0, random.randint(400, 1200))
+                    time.sleep(random.uniform(0.3, 1.0))
+
+                if time.monotonic() >= end_time:
+                    break
+
+                time.sleep(random.uniform(2, 8))
+        finally:
+            context.close()
 
 
 def find_brave_exe() -> str | None:
@@ -1198,5 +1258,19 @@ class App(tk.Tk):
             messagebox.showerror("Failed", msg)
 
 
-if __name__ == "__main__":
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Proxy Browser Launcher + Profiling Runner")
+    parser.add_argument("--profiling-runner", action="store_true", help="Run Playwright profiling runner")
+    parser.add_argument("--duration-minutes", type=int, default=15, help="Total runtime in minutes")
+    parser.add_argument("--headed", action="store_true", help="Run Chromium with UI")
+    args = parser.parse_args()
+
+    if args.profiling_runner:
+        run_profiling_runner(duration_minutes=args.duration_minutes, headless=not args.headed)
+        return
+
     App().mainloop()
+
+
+if __name__ == "__main__":
+    main()
